@@ -10,10 +10,7 @@ var argv = require('minimist')(process.argv.slice(2));
 var optionsMap = require('./src/options-map').options;
 
 program.option('-p, --port <number>', 'server port')
-    .option('-t, --tag-manager', 'add google tag manager to page')
-    .action(function(cmd, options){
-        console.log('exec "%s" using %s mode', cmd, options.exec_mode);
-    });
+    .option('-t, --tag-manager', 'add google tag manager to page');
 
 program.parse(process.argv);
 
