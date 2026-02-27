@@ -1,0 +1,83 @@
+name: Migration Tool — image & stack deploy
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "src/**"
+      - "server.js"
+      - "cli.js"
+      - "index.html"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/deploy.yml"
+      - ".github/deploy/**"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      IMAGE_NAME: anychart-web-migration
+      IMAGE_TAG: latest
+      STACK_NAME: anychart-services
+
+      DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      NODE_USER: ${{ secrets.NODE_USER }}
+      NODE_HOST: ${{ secrets.NODE_HOST }}
+      ANYCHART_BOT_KEY: ${{ secrets.ANYCHART_BOT_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: With docker context
+        id: docker-context
+        uses: AnyChart/with-docker-context@v1
+        with:
+          ssh_private_key: ${{ env.ANYCHART_BOT_KEY }}
+          hosts: |
+            - user: ${{ env.NODE_USER }}
+              ssh_host: ${{ env.NODE_HOST }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USER }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Build and push migration image
+        run: |
+          IMAGE="$DOCKERHUB_USER/$IMAGE_NAME:$IMAGE_TAG"
+          docker build -t "$IMAGE" -f Dockerfile .
+          docker push "$IMAGE"
+
+      - name: Deploy on server
+        run: |
+          IMAGE="$DOCKERHUB_USER/$IMAGE_NAME:$IMAGE_TAG"
+          docker pull "$IMAGE"
+          IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE" 2>/dev/null)
+          if [ -n "$IMAGE_DIGEST" ] && echo "$IMAGE_DIGEST" | grep -q "@sha256:"; then
+            export DOCKER_IMAGE="$IMAGE_DIGEST"
+          else
+            echo "Failed to resolve image digest for $IMAGE; aborting to avoid deploying unpinned tag."
+            exit 1
+          fi
+
+          if ! docker network inspect "$STACK_NAME" >/dev/null 2>&1; then
+            docker network create --driver overlay --attachable "$STACK_NAME"
+          fi
+
+          docker stack deploy \
+            --with-registry-auth \
+            --compose-file .github/deploy/stack.migration.yml \
+            "$STACK_NAME" || (echo "Deployment failed" && exit 1)
+
+      - name: Clean up after deployment
+        if: always()
+        run: |
+          docker system prune -af --volumes || true

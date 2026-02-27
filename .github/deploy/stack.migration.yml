@@ -1,0 +1,43 @@
+version: "3.8"
+
+# migration.anychart.com — AnyChart v7→v8 migration web tool
+# Stack: anychart-services
+# Port: 8100 (container listens on 3001)
+# Placement: report-server-new (hostname: qlik) — same server as the previous bare-metal setup
+#
+# nginx on anychart-com-new proxies migration.anychart.com → 127.0.0.1:8100
+# See: servers-conf/servers/anychart-com/nginx/1.29/conf.d/migration.anychart.com.conf
+
+services:
+  migration:
+    image: "${DOCKER_IMAGE}"
+    ports:
+      - target: 3001
+        published: 8100
+        protocol: tcp
+        mode: ingress
+    networks:
+      - anychart-services
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+      rollback_config:
+        parallelism: 0
+        order: stop-first
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      placement:
+        constraints:
+          - node.hostname == qlik
+
+networks:
+  anychart-services:
+    external: true
+    name: anychart-services
