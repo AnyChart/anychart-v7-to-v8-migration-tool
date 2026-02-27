@@ -39,11 +39,3 @@ jobs:
           IMAGE="$DOCKERHUB_USER/$IMAGE_NAME:$IMAGE_TAG"
           docker build -t "$IMAGE" -f Dockerfile .
           docker push "$IMAGE"
-
-      - name: Trigger deployment in servers-conf
-        run: |
-          curl -f -s -X POST \
-            -H "Authorization: token ${{ secrets.SERVERS_CONF_DISPATCH_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/AnyChart/servers-conf/dispatches \
-            -d '{"event_type":"deploy-migration"}'
