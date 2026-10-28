@@ -1,6 +1,6 @@
 # migration.anychart.com — Agent Guide
 
-AnyChart v7→v8 JavaScript API migration tool: a small Express app plus a CLI. Plain ES5 Node, Node 20 in Docker. **Frozen utility: minimal bug fixes only, no new features.** Online at https://migration.anychart.com/.
+AnyChart v7→v8 JavaScript API migration tool: a small Express app plus a CLI. Plain ES5 Node, Node 22 in Docker. **Frozen utility: minimal bug fixes only, no new features.** Online at https://migration.anychart.com/.
 
 ## Start Here
 
@@ -25,7 +25,7 @@ node cli.js <path> [-r] [-e html] [-l <local path|CDN>] [-v <version>] [-b <bund
 - `cli.js`: console migration of files or folders
 - `src/migration.js`: entry that applies the replacers
 - `src/*-replacer.js` with `src/deprecated-api.js`, `enums.js`, `grid`, `interactivity-state`, `mapAs`, `modules`: v7→v8 mapping tables and replacers; `src/options-map.js` maps request options to CLI args
-- `Dockerfile`: `node:20-alpine`, `CMD ["node","server.js","-p","3001","-t"]`
+- `Dockerfile`: `node:22.23.4-alpine` (pinned by digest), `CMD ["node","server.js","-p","3001","-t"]`
 - `.github/workflows/deploy.yml`: on push to `master` (path-filtered) builds and pushes `anychart-web-migration:latest` to Docker Hub
 
 ## Repo-Specific Traps
